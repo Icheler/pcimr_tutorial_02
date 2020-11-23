@@ -16,8 +16,6 @@ chosen_model = 0
 
 def percentageReturn(start, end, value):
     if(np.abs(value) < np.abs(start)):
-        print(value)
-        print(start)
         return 0
     elif(np.abs(value)>np.abs(end)):
         return 1
@@ -69,8 +67,16 @@ def scanWorker(laser_scan):
     scan_count = len(ranges)
 
     #get value for middle-most scan
-    middle_value = np.round(scan_count//2)
-    return ranges[middle_value]
+    middle_value = int(scan_count//2)
+
+    #get 45 degree approximate lasers
+    approx_number = int(0.8/np.abs(angle_min)*(middle_value))
+
+    start = middle_value - approx_number
+    end = middle_value + approx_number
+    result = ranges[start:end]
+    print(len(result))
+    return result
 
 #subscriber to scan data
 scan = rospy.Subscriber('/scan', LaserScan, callback, 1)
@@ -90,7 +96,14 @@ while not rospy.is_shutdown():
         subrate.sleep()
     subrate.sleep()
     if (change_vel.linear.x > 0):
-        middle_value = scanWorker(scan_data)
-        change_vel.linear.x=velocityModel(middle_value, chosen_model)
+        ranges = scanWorker(scan_data)
+        lowest_vel = 100
+        for i in range(len(ranges)):
+            test_vel = velocityModel(ranges[1], chosen_model)
+            if(test_vel<lowest_vel):
+                lowest_vel=test_vel
+        change_vel.linear.x= lowest_vel
+
+        print(lowest_vel)
     
     pub.publish(change_vel)
