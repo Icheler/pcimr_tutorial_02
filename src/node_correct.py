@@ -12,8 +12,10 @@ from sensor_msgs.msg import LaserScan
 
 scan_data = LaserScan()
 vel_data = Twist()
+#chosen velocity model: see velocityModel()
 chosen_model = 0
 
+#returns percentage based value between start and end points
 def percentageReturn(start, end, value):
     if(np.abs(value) < np.abs(start)):
         return 0
@@ -24,6 +26,7 @@ def percentageReturn(start, end, value):
         result = np.sign(result)
     return result
 
+#implementation of several velocity models
 def velocityModel(distance, number):
     #step function
     if(number==1):
@@ -47,6 +50,7 @@ def velocityModel(distance, number):
             else:
                 return (distance) ** 2
 
+#standard callback for laserScan and velocity Data gathered by Subscribers
 def callback(data, call):
     #laserscan
     if (call):
@@ -59,6 +63,7 @@ def callback(data, call):
         vel_data.linear = data.linear
         vel_data.angular = data.angular 
 
+# returns range values for specific interval specified by direction
 def scanWorker(laser_scan, direction):
     angle_min = laser_scan.angle_min
     ranges = laser_scan.ranges
@@ -94,6 +99,7 @@ def scanWorker(laser_scan, direction):
     result = ranges[start:end]
     return result
 
+#returns scanWorker scan_values after assigning directions to them
 def getDirectionalScan(velo_data, scan_data):
     if(velo_data.linear.x>0):
         if(velo_data.linear.y == 0):
@@ -111,15 +117,17 @@ def getDirectionalScan(velo_data, scan_data):
 #subscriber to scan data
 scan = rospy.Subscriber('/scan', LaserScan, callback, 1)
 
+#subscriber to cmd_vel data
 velo = rospy.Subscriber('/input/cmd_vel', Twist, callback, 0)
 
-#publisher mover
+#publisher correcter
 pub = rospy.Publisher('/cmd_vel', Twist, queue_size= 10)
 
 rospy.init_node('correcter')
 
 subrate = rospy.Rate(60)
 
+#while no scan data is available, we wait
 while(scan_data == LaserScan()):
     while not rospy.is_shutdown:
         subrate.sleep()
@@ -127,19 +135,21 @@ while(scan_data == LaserScan()):
 while not rospy.is_shutdown():
     subrate.sleep()
     change_vel = vel_data
+
+    #see if sensor readings can impact the velocity, i.e moving backwards in any way is not feasable for us to adjust
     if ((change_vel.linear.x > 0 or (change_vel.linear.y != 0)) and not (change_vel.linear.x < 0)):
         ranges = getDirectionalScan(change_vel, scan_data)
         lowest_vel = 100
+        #get lowest velocity estimate for all points in ranges cloud
         for i in range(len(ranges)):
             test_vel = velocityModel(ranges[i], chosen_model)
             if(test_vel<lowest_vel):
                 lowest_vel=test_vel
         if(vel_data.linear.x != 0):
-            print('x' + str(lowest_vel))
             change_vel.linear.x= lowest_vel
         if(vel_data.linear.y != 0):
-            print('y' + str(lowest_vel))
             change_vel.linear.y= lowest_vel*np.sign(change_vel.linear.y)
     
+    #quality of life to see adjustments
     print(change_vel)
     pub.publish(change_vel)
