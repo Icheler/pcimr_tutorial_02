@@ -118,10 +118,10 @@ def getDirectionalScan(velo_data, scan_data):
 scan = rospy.Subscriber('/scan', LaserScan, callback, 1)
 
 #subscriber to cmd_vel data
-velo = rospy.Subscriber('/input/cmd_vel', Twist, callback, 0)
+velo = rospy.Subscriber(rospy.get_param("listening_channel"), Twist, callback, 0)
 
 #publisher correcter
-pub = rospy.Publisher('/cmd_vel', Twist, queue_size= 10)
+pub = rospy.Publisher(rospy.get_param("publishing_channel"), Twist, queue_size= 10)
 
 rospy.init_node('correcter')
 

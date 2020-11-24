@@ -1,0 +1,13 @@
+<launch>
+    <arg name="robot" value="$(optenv ROBOT rto-1)"/>
+    <arg name="choice" value="$(eval robot == 'p3dx')"/>
+    <group if="$(arg choice)">
+        <param name="listening_channel" value="/input/cmd_vel"/>
+        <param name="publishing_channel" value="/pioneer/cmd_vel"/>
+    </group>
+    <group unless="$(arg choice)">
+        <param name="listening_channel" value="/input/cmd_vel"/>
+        <param name="publishing_channel" value="/cmd_vel"/>
+    </group>
+    <node name="correcter" pkg="pcimr_tutorial_02" type="node_correct.py"/>
+</launch>
